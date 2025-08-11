@@ -1,0 +1,11 @@
+# Root ignores
+node_modules/
+.env
+.DS_Store
+
+# App artifacts (keep these duplicated at app level too)
+apps/**/node_modules/
+apps/**/.env
+apps/**/.next/
+apps/**/dist/
+apps/**/coverage/

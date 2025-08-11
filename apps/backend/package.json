@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "-": "^0.0.1",
+    "@prisma/client": "^6.13.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "D": "^1.0.0",
