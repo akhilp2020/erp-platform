@@ -176,5 +176,15 @@ async function main() {
     process.exit(1);
   }
 }
+function generateCodeFromSpec(spec) {
+  // your existing PTL/YAML → Prisma/schema code logic
+}
+
+if (require.main === module) {
+  // CLI behavior
+}
+
+module.exports = { generateCodeFromSpec };
+
 
 main();

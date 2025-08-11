@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate-from-ui": "node run-codegen.js"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +17,8 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "D": "^1.0.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "prisma": "^6.13.0"
