@@ -1,0 +1,63 @@
+version: "0.1"
+tenant:
+  name: Demo Salon
+verticals: [salon]
+data:
+  entities:
+    - name: Customer
+      fields:
+        - { name: id, type: string, required: true, unique: true }
+        - { name: name, type: string, required: true }
+        - { name: email, type: string, unique: true }
+        - { name: phone, type: string }
+    - name: Staff
+      fields:
+        - { name: id, type: string, required: true, unique: true }
+        - { name: name, type: string, required: true }
+        - { name: role, type: enum, enumValues: [stylist, therapist, admin], required: true }
+    - name: Service
+      fields:
+        - { name: id, type: string, required: true, unique: true }
+        - { name: name, type: string, required: true }
+        - { name: durationMin, type: int, required: true }
+        - { name: price, type: money, required: true }
+    - name: Appointment
+      fields:
+        - { name: id, type: string, required: true, unique: true }
+        - { name: customerId, type: ref, refEntity: Customer, required: true, index: true }
+        - { name: staffId, type: ref, refEntity: Staff, required: true, index: true }
+        - { name: serviceId, type: ref, refEntity: Service, required: true }
+        - { name: start, type: datetime, required: true, index: true }
+        - { name: status, type: enum, enumValues: [booked, checked_in, done, no_show], required: true, default: "booked" }
+views:
+  - { kind: form, entity: Appointment, route: "/book", title: "Book Appointment", fields: [customerId, staffId, serviceId, start] }
+  - { kind: table, entity: Appointment, route: "/admin/appointments", title: "Appointments", filters: [status, staffId, start] }
+  - { kind: table, entity: Service, route: "/admin/services", title: "Services" }
+workflows:
+  - name: reminder_sms
+    trigger: "cron:0 9 * * *" # daily 9am
+    when: {
+      ".and": [
+        { ">=": [ {"var": "start"}, {"+": [ {"now": "hours"}, 24 ] } ] },
+        { "<":  [ {"var": "start"}, {"+": [ {"now": "hours"}, 25 ] } ] },
+        { "==": [ {"var": "status"}, "booked" ] }
+      ]
+    }
+    actions:
+      - { sms.send: { to: "customer.phone", template: "reminder_24h" } }
+  - name: no_show_fee
+    trigger: "event:Appointment.status_changed"
+    when: { "==": [ {"var": "status"}, "no_show" ] }
+    actions:
+      - { ledger.addFee: { amount: "10% of Service.price" } }
+access:
+  roles: [owner, staff, customer]
+  rules:
+    - { entity: Appointment, allow: [create, read, update], where: "role in [owner, staff] or (role==customer and userId==record.customerId)" }
+    - { entity: Service, allow: [read], where: "true" }
+integrations:
+  payments: stripe
+  tax: ca_basic
+build:
+  api: rest
+  ui: nextjs

@@ -1,0 +1,129 @@
+{
+  "$id": "https://yourdomain.com/schemas/ptl.schema.json",
+  "title": "Platform Template Language v0.1",
+  "type": "object",
+  "required": ["version", "tenant", "data"],
+  "properties": {
+    "version": {"type": "string", "enum": ["0.1"]},
+    "tenant": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"name": {"type": "string"}}
+    },
+    "verticals": {"type": "array", "items": {"type": "string", "enum": ["salon", "small_retail"]}},
+    "data": {
+      "type": "object",
+      "required": ["entities"],
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "fields"],
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "type"],
+                  "properties": {
+                    "name": {"type": "string"},
+                    "type": {"type": "string", "enum": [
+                      "string","text","int","float","money","bool","date","datetime","enum","ref","json"
+                    ]},
+                    "enumValues": {"type": "array", "items": {"type": "string"}},
+                    "refEntity": {"type": "string"},
+                    "required": {"type": "boolean"},
+                    "unique": {"type": "boolean"},
+                    "default": {},
+                    "min": {"type": "number"},
+                    "max": {"type": "number"},
+                    "regex": {"type": "string"},
+                    "index": {"type": "boolean"},
+                    "notes": {"type": "string"}
+                  }
+                }
+              },
+              "indexes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "fields"],
+                  "properties": {
+                    "name": {"type": "string"},
+                    "fields": {"type": "array", "items": {"type": "string"}},
+                    "unique": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "views": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "entity", "route"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["table","form","page","chart"]},
+          "entity": {"type": "string"},
+          "route": {"type": "string"},
+          "title": {"type": "string"},
+          "fields": {"type": "array", "items": {"type": "string"}},
+          "filters": {"type": "array", "items": {"type": "string"}},
+          "actions": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "workflows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name","trigger","actions"],
+        "properties": {
+          "name": {"type": "string"},
+          "trigger": {"type": "string", "description": "event:<Entity>.<create|update|delete|status_changed>|cron:<expression>"},
+          "when": {"type": "object", "description": "JSONLogic expression"},
+          "actions": {"type": "array", "items": {"type": "object"}},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "access": {
+      "type": "object",
+      "properties": {
+        "roles": {"type": "array", "items": {"type": "string"}},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["entity","allow"],
+            "properties": {
+              "entity": {"type": "string"},
+              "allow": {"type": "array", "items": {"type": "string", "enum": ["create","read","update","delete"]}},
+              "where": {"type": "string", "description": "mini-DSL, e.g., role in [owner,staff] or (role==customer and userId==record.customerId)"}
+            }
+          }
+        }
+      }
+    },
+    "integrations": {
+      "type": "object",
+      "properties": {
+        "payments": {"type": "string", "enum": ["stripe","square","none"]},
+        "tax": {"type": "string", "enum": ["ca_basic","none"]}
+      }
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "api": {"type": "string", "enum": ["rest","trpc"]},
+        "ui": {"type": "string", "enum": ["nextjs"]}
+      }
+    }
+  }
+}

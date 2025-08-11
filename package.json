@@ -1,0 +1,23 @@
+{
+  "name": "smb-platform",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "-": "^0.0.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "D": "^1.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.13.0"
+  }
+}
