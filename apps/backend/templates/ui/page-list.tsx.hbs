@@ -1,0 +1,35 @@
+'use client';
+import { useEffect, useState } from 'react';
+
+export default function Page() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/{{kebab entityName}}').then(r => r.json()).then(setRows).catch(e => setError(String(e)));
+  }, []);
+
+  if (error) return <div className="p-6 text-red-600">{error}</div>;
+
+  return (
+    <main className="p-6">
+      <h1 className="text-xl font-semibold mb-4">{{title}} ({{entityName}})</h1>
+      <a className="underline text-blue-600" href="/{{kebab entityName}}/new">+ New</a>
+      <table className="mt-4 border">
+        <thead><tr>
+          {{#each displayFields}}<th className="border px-2 py-1 text-left">{{this}}</th>{{/each}}
+          <th className="border px-2 py-1">Actions</th>
+        </tr></thead>
+        <tbody>
+        {rows.map((r) => (
+          <tr key={r.id} className="border">
+            {{#each displayFields}}<td className="border px-2 py-1">{String(r['{{this}}'] ?? '')}</td>{{/each}}
+            <td className="border px-2 py-1"><a className="underline" href={`/{{kebab ../entityName}}/${r.id}`}>edit</a></td>
+          </tr>
+        ))}
+        </tbody>
+      </table>
+    </main>
+  );
+}
+
