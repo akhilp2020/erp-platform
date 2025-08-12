@@ -1,26 +1,30 @@
 const fs = require('fs-extra');
 const path = require('path');
+const fg = require('fast-glob');
+const change = require('change-case'); // works for camelCase/pascalCase in CJS
+const { camelCase, pascalCase } = change;
+
+// Some setups don’t expose paramCase via change-case in CJS
+let paramCase = change.paramCase;
+if (typeof paramCase !== 'function') {
+  // Fallback for CJS: use param-case subpackage
+  try {
+    paramCase = require('param-case').paramCase;
+  } catch {
+    throw new Error(
+      'paramCase not available. Run: npm i param-case'
+    );
+  }
+}
+
 const Handlebars = require('handlebars');
+Handlebars.registerHelper('camel', (s) => camelCase(String(s || '')));
+Handlebars.registerHelper('pascal', (s) => pascalCase(String(s || '')));
+Handlebars.registerHelper('kebab', (s) => paramCase(String(s || '')));
 
-/** Lightweight, dependency-free case helpers */
-function toKebab(input='') {
-  return String(input)
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')   // camelCase -> camel-Case
-    .replace(/[\s_]+/g, '-')                  // spaces/underscores -> dash
-    .toLowerCase();
-}
-function toCamel(input='') {
-  const s = String(input).trim().replace(/[\s-_]+(.)/g, (_, c) => c.toUpperCase());
-  return s.charAt(0).toLowerCase() + s.slice(1);
-}
-function toPascal(input='') {
-  const c = toCamel(input);
-  return c.charAt(0).toUpperCase() + c.slice(1);
-}
-
-Handlebars.registerHelper('camel', (s) => toCamel(String(s || '')));
-Handlebars.registerHelper('pascal', (s) => toPascal(String(s || '')));
-Handlebars.registerHelper('kebab', (s) => toKebab(String(s || '')));
+// Handlebars.registerHelper('camel', camelCase);
+// Handlebars.registerHelper('pascal', pascalCase);
+// Handlebars.registerHelper('kebab', paramCase);
 
 function compile(tplPath, data) {
   const source = fs.readFileSync(tplPath, 'utf8');
@@ -53,37 +57,33 @@ async function generate(ptl, outDir) {
 
   // 2) For each entity: API + UI (Next.js app router)
   for (const e of entities) {
-    const route = toKebab(e.name);
-
+    const routeBase = path.join(outDir, 'app', paramCase(e.name));
     // API list/create
     const apiList = compile(path.resolve(__dirname, '../templates/api/route.ts.hbs'), { entityName: e.name });
-    await fs.outputFile(path.join(outDir, 'app/api', route, 'route.ts'), apiList);
-
+    await fs.outputFile(path.join(outDir, 'app/api', paramCase(e.name), 'route.ts'), apiList);
     // API by id
     const apiId = compile(path.resolve(__dirname, '../templates/api/route-id.ts.hbs'), { entityName: e.name });
-    await fs.outputFile(path.join(outDir, 'app/api', route, '[id]', 'route.ts'), apiId);
-
+    await fs.outputFile(path.join(outDir, 'app/api', paramCase(e.name), '[id]', 'route.ts'), apiId);
     // UI list page
     const displayFields = e.fields.slice(0, 4).map(f => f.name);
     const uiList = compile(path.resolve(__dirname, '../templates/ui/page-list.tsx.hbs'), {
       entityName: e.name, title: `${e.name} List`, displayFields
     });
-    await fs.outputFile(path.join(outDir, 'app', route, 'page.tsx'), uiList);
-
+    await fs.outputFile(path.join(outDir, 'app', paramCase(e.name), 'page.tsx'), uiList);
     // UI form page
     const inputFields = e.fields.filter(f => f.name !== 'id' && f.type !== 'DateTime' && f.type !== 'Json');
     const defaults = {};
-    inputFields.forEach(f => (defaults[f.name] = '""'));
+    inputFields.forEach(f => defaults[f.name] = '""');
     const uiForm = compile(path.resolve(__dirname, '../templates/ui/page-form.tsx.hbs'), {
       entityName: e.name, fields: inputFields, defaults
     });
-    await fs.outputFile(path.join(outDir, 'app', route, '[...id]', 'page.tsx'), uiForm);
+    await fs.outputFile(path.join(outDir, 'app', paramCase(e.name), '[...id]', 'page.tsx'), uiForm);
   }
 
-  // 3) Base scaffolding (idempotent)
+  // 3) Basic Next.js boilerplate files (app/layout etc.) if missing
   await scaffoldBase(outDir);
 
-  // 4) Format Prisma if available
+  // 4) Prettier (optional)
   try {
     const { execSync } = require('node:child_process');
     execSync(`npx prisma format --schema=${path.join(outDir, 'prisma/schema.prisma')}`, { stdio: 'inherit' });
@@ -108,26 +108,50 @@ function mapType(f) {
 }
 
 async function scaffoldBase(outDir) {
-  await fs.ensureDir(path.join(outDir, 'app'));
+  // package.json for the generated app
+  await fs.outputFile(path.join(outDir, 'package.json'), JSON.stringify({
+    name: "generated-tenant",
+    private: true,
+    scripts: {
+      dev: "next dev",
+      build: "next build",
+      start: "next start",
+      migrate: "prisma migrate dev --name init || true",
+      studio: "prisma studio"
+    },
+    dependencies: {
+      "next": "14.2.5",
+      "react": "18.2.0",
+      "react-dom": "18.2.0",
+      "@prisma/client": "^6.13.0"
+    },
+    devDependencies: {
+      "prisma": "^6.13.0",
+      "typescript": "^5.4.0"
+    }
+  }, null, 2));
 
-  const layoutPath = path.join(outDir, 'app', 'layout.tsx');
-  if (!fs.existsSync(layoutPath)) {
-    await fs.outputFile(layoutPath, `
+  // next config + tsconfig + env
+  await fs.outputFile(path.join(outDir, 'next.config.js'), `module.exports = { experimental: { appDir: true } };`);
+  await fs.outputFile(path.join(outDir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { jsx: "react-jsx" }}, null, 2));
+  await fs.ensureDir(path.join(outDir, 'app'));
+  await fs.outputFile(path.join(outDir, 'app', 'layout.tsx'), `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return <html><body className="p-6 font-sans">{children}</body></html>;
-}`.trim());
-  }
-
-  const homePath = path.join(outDir, 'app', 'page.tsx');
-  if (!fs.existsSync(homePath)) {
-    await fs.outputFile(homePath, `
+}
+  `.trim());
+  await fs.outputFile(path.join(outDir, '.env'), `DATABASE_URL="file:./dev.db"`);
+  // root page with links
+  await fs.outputFile(path.join(outDir, 'app', 'page.tsx'), `
 export default function Page() {
   return <main className="p-6">
     <h1 className="text-2xl font-semibold mb-4">Generated App</h1>
-    <p>Visit your entity routes, e.g., /customer</p>
+    <ul>
+      ${/* links created dynamically at runtime; static placeholder */''}
+    </ul>
   </main>;
-}`.trim());
-  }
+}
+  `.trim());
 }
 
 module.exports = { generate };

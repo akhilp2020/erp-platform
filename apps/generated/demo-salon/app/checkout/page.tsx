@@ -59,8 +59,8 @@ export default function CheckoutPage() {
         <div className="flex gap-3 items-center">
           <label>Tip ($)</label>
           <input className="border rounded px-2 py-1 w-24" value={String(tip)} onChange={e => setTip(e.target.value)} />
-          <label>ZIP (optional)</label>
-          <input className="border rounded px-2 py-1 w-28" value={zip} onChange={e => setZip(e.target.value)} />
+          <label htmlFor="zip">ZIP (optional)</label>
+<input id="zip" name="zip" className="border rounded px-2 py-1 w-28" value={zip} onChange={e => setZip(e.target.value)} />
         </div>
 
         <button className="bg-black text-white rounded px-4 py-2" onClick={runCheckout}>Compute & Save</button>

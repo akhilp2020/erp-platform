@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "generate-from-ui": "node run-codegen.js"
+    "test": "jest --runInBand",
+    "generate-from-ui": "node run-codegen.js",
+    "generate:salon": "node codegen/run-from-ptl.js packs/salon/salon-pack.ptl.yaml demo-salon"
   },
   "keywords": [],
   "author": "",
@@ -17,10 +18,18 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "D": "^1.0.0",
+    "fast-glob": "^3.3.3",
+    "fs-extra": "^11.3.1",
+    "handlebars": "^4.7.8",
     "js-yaml": "^4.1.0",
+    "prettier": "^3.6.2",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "prisma": "^6.13.0"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.5",
+    "prisma": "^6.13.0",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2"
   }
 }

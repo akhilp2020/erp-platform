@@ -1,0 +1,54 @@
+
+PLAY [Week 6 – Tax adapter + tests + git] **************************************
+
+TASK [Ensure app folder exists] ************************************************
+ok: [localhost]
+
+TASK [Stop if app not found] ***************************************************
+skipping: [localhost]
+
+TASK [Create providers directory] **********************************************
+changed: [localhost]
+
+TASK [Write tax adapter (selector + calcTax)] **********************************
+changed: [localhost]
+
+TASK [Write stub provider (baseline + tiny overrides)] *************************
+changed: [localhost]
+
+TASK [Write table provider (hard-coded map; extend later)] *********************
+changed: [localhost]
+
+TASK [Ensure checkout API uses tax-adapter] ************************************
+changed: [localhost]
+
+TASK [Replace calc function name to calcTax if needed] *************************
+changed: [localhost]
+
+TASK [Ensure TAX_PROVIDER in .env] *********************************************
+changed: [localhost]
+
+TASK [Ensure jest config (CJS) exists for tenant] ******************************
+ok: [localhost]
+
+TASK [Write adapter unit tests] ************************************************
+changed: [localhost]
+
+TASK [Ensure playwright config isolates tests/ *.spec.*] ***********************
+changed: [localhost]
+
+TASK [Create tests directory] **************************************************
+ok: [localhost]
+
+TASK [Write E2E spec verifying ZIP override] ***********************************
+changed: [localhost]
+
+TASK [Run tenant unit tests (Jest)] ********************************************
+changed: [localhost]
+
+TASK [Run tenant e2e (Playwright)] *********************************************
+fatal: [localhost]: FAILED! => {"changed": true, "cmd": "npm run -s e2e", "delta": "0:00:02.849869", "end": "2025-08-12 14:30:40.581578", "msg": "non-zero return code", "rc": 1, "start": "2025-08-12 14:30:37.731709", "stderr": "", "stderr_lines": [], "stdout": "Error: No tests found", "stdout_lines": ["Error: No tests found"]}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=14   changed=11   unreachable=0    failed=1    skipped=1    rescued=0    ignored=0   
+

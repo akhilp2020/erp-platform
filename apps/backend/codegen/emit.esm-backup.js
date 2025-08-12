@@ -2,25 +2,17 @@ const fs = require('fs-extra');
 const path = require('path');
 const Handlebars = require('handlebars');
 
-/** Lightweight, dependency-free case helpers */
-function toKebab(input='') {
-  return String(input)
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')   // camelCase -> camel-Case
-    .replace(/[\s_]+/g, '-')                  // spaces/underscores -> dash
-    .toLowerCase();
+// case helpers (CJS-safe)
+const change = require('change-case');
+let { camelCase, pascalCase } = change;
+let paramCase = change.paramCase;
+if (typeof paramCase !== 'function') {
+  try { paramCase = require('param-case').paramCase; }
+  catch { throw new Error('paramCase not available. Run: npm i param-case'); }
 }
-function toCamel(input='') {
-  const s = String(input).trim().replace(/[\s-_]+(.)/g, (_, c) => c.toUpperCase());
-  return s.charAt(0).toLowerCase() + s.slice(1);
-}
-function toPascal(input='') {
-  const c = toCamel(input);
-  return c.charAt(0).toUpperCase() + c.slice(1);
-}
-
-Handlebars.registerHelper('camel', (s) => toCamel(String(s || '')));
-Handlebars.registerHelper('pascal', (s) => toPascal(String(s || '')));
-Handlebars.registerHelper('kebab', (s) => toKebab(String(s || '')));
+Handlebars.registerHelper('camel', (s) => camelCase(String(s || '')));
+Handlebars.registerHelper('pascal', (s) => pascalCase(String(s || '')));
+Handlebars.registerHelper('kebab', (s) => paramCase(String(s || '')));
 
 function compile(tplPath, data) {
   const source = fs.readFileSync(tplPath, 'utf8');
@@ -53,23 +45,18 @@ async function generate(ptl, outDir) {
 
   // 2) For each entity: API + UI (Next.js app router)
   for (const e of entities) {
-    const route = toKebab(e.name);
-
     // API list/create
     const apiList = compile(path.resolve(__dirname, '../templates/api/route.ts.hbs'), { entityName: e.name });
-    await fs.outputFile(path.join(outDir, 'app/api', route, 'route.ts'), apiList);
-
+    await fs.outputFile(path.join(outDir, 'app/api', paramCase(e.name), 'route.ts'), apiList);
     // API by id
     const apiId = compile(path.resolve(__dirname, '../templates/api/route-id.ts.hbs'), { entityName: e.name });
-    await fs.outputFile(path.join(outDir, 'app/api', route, '[id]', 'route.ts'), apiId);
-
+    await fs.outputFile(path.join(outDir, 'app/api', paramCase(e.name), '[id]', 'route.ts'), apiId);
     // UI list page
     const displayFields = e.fields.slice(0, 4).map(f => f.name);
     const uiList = compile(path.resolve(__dirname, '../templates/ui/page-list.tsx.hbs'), {
       entityName: e.name, title: `${e.name} List`, displayFields
     });
-    await fs.outputFile(path.join(outDir, 'app', route, 'page.tsx'), uiList);
-
+    await fs.outputFile(path.join(outDir, 'app', paramCase(e.name), 'page.tsx'), uiList);
     // UI form page
     const inputFields = e.fields.filter(f => f.name !== 'id' && f.type !== 'DateTime' && f.type !== 'Json');
     const defaults = {};
@@ -77,10 +64,10 @@ async function generate(ptl, outDir) {
     const uiForm = compile(path.resolve(__dirname, '../templates/ui/page-form.tsx.hbs'), {
       entityName: e.name, fields: inputFields, defaults
     });
-    await fs.outputFile(path.join(outDir, 'app', route, '[...id]', 'page.tsx'), uiForm);
+    await fs.outputFile(path.join(outDir, 'app', paramCase(e.name), '[...id]', 'page.tsx'), uiForm);
   }
 
-  // 3) Base scaffolding (idempotent)
+  // 3) Base scaffolding (if you don’t already create these elsewhere)
   await scaffoldBase(outDir);
 
   // 4) Format Prisma if available
@@ -109,7 +96,7 @@ function mapType(f) {
 
 async function scaffoldBase(outDir) {
   await fs.ensureDir(path.join(outDir, 'app'));
-
+  // layout (only if missing)
   const layoutPath = path.join(outDir, 'app', 'layout.tsx');
   if (!fs.existsSync(layoutPath)) {
     await fs.outputFile(layoutPath, `
@@ -117,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return <html><body className="p-6 font-sans">{children}</body></html>;
 }`.trim());
   }
-
+  // homepage (only if missing)
   const homePath = path.join(outDir, 'app', 'page.tsx');
   if (!fs.existsSync(homePath)) {
     await fs.outputFile(homePath, `

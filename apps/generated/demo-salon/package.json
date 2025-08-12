@@ -1,0 +1,30 @@
+{
+  "name": "generated-tenant",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "migrate": "prisma migrate dev --name init || true",
+    "studio": "prisma studio",
+    "test": "jest --runInBand --config=jest.config.cjs",
+    "e2e": "playwright test",
+    "ci": "npm run test && npm run e2e"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "next": "^14.2.31",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "@types/jest": "^30.0.0",
+    "@types/react": "19.1.10",
+    "jest": "^30.0.5",
+    "prisma": "^6.13.0",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

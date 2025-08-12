@@ -1,0 +1,63 @@
+
+PLAY [Week 6 – Tax adapter + tests + git] **************************************
+
+TASK [Ensure app folder exists] ************************************************
+ok: [localhost]
+
+TASK [Stop if app not found] ***************************************************
+skipping: [localhost]
+
+TASK [Create providers directory] **********************************************
+ok: [localhost]
+
+TASK [Write tax adapter (selector + calcTax)] **********************************
+ok: [localhost]
+
+TASK [Write stub provider (baseline + tiny overrides)] *************************
+ok: [localhost]
+
+TASK [Write table provider (hard-coded map; extend later)] *********************
+ok: [localhost]
+
+TASK [Ensure checkout API uses tax-adapter] ************************************
+ok: [localhost]
+
+TASK [Replace calc function name to calcTax if needed] *************************
+ok: [localhost]
+
+TASK [Ensure TAX_PROVIDER in .env] *********************************************
+ok: [localhost]
+
+TASK [Ensure jest config (CJS) exists for tenant] ******************************
+ok: [localhost]
+
+TASK [Write adapter unit tests] ************************************************
+ok: [localhost]
+
+TASK [Ensure ZIP input has htmlFor/id (accessibility)] *************************
+changed: [localhost]
+
+TASK [Make E2E use getByLabel for ZIP] *****************************************
+changed: [localhost]
+
+TASK [Ensure playwright config isolates ./tests] *******************************
+changed: [localhost]
+
+TASK [Ensure tests directory exists] *******************************************
+ok: [localhost]
+
+TASK [Write E2E spec verifying ZIP override (idempotent)] **********************
+changed: [localhost]
+
+TASK [Sanity list Playwright tests (helps debugging)] **************************
+changed: [localhost]
+
+TASK [Run tenant unit tests (Jest)] ********************************************
+changed: [localhost]
+
+TASK [Run tenant e2e (Playwright)] *********************************************
+fatal: [localhost]: FAILED! => {"changed": true, "cmd": "npm run -s e2e", "delta": "0:00:09.382144", "end": "2025-08-12 14:48:30.859712", "msg": "non-zero return code", "rc": 1, "start": "2025-08-12 14:48:21.477568", "stderr": "", "stderr_lines": [], "stdout": "\nRunning 2 tests using 2 workers\n\n  ✓  1 tests/checkout.spec.ts:3:5 › checkout computes tax and writes ledger (894ms)\n  ✘  2 tests/checkout-zip.spec.ts:2:5 › ZIP override affects tax and total (5.9s)\n\n\n  1) tests/checkout-zip.spec.ts:2:5 › ZIP override affects tax and total ───────────────────────────\n\n    Error: \u001b[31mTimed out 5000ms waiting for \u001b[39m\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m\n\n    Locator: getByText('Total: $109.25')\n    Expected: visible\n    Received: <element(s) not found>\n    Call log:\n    \u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n    \u001b[2m  - waiting for getByText('Total: $109.25')\u001b[22m\n\n\n       9 |   await expect(page.getByText('Subtotal: $100.00')).toBeVisible();\n      10 |   await expect(page.getByText('Tax (9.25%): $9.25')).toBeVisible();\n    > 11 |   await expect(page.getByText('Total: $109.25')).toBeVisible();\n         |                                                  ^\n      12 | });\n      13 |\n        at /Users/akhil/erp-platform/apps/generated/demo-salon/tests/checkout-zip.spec.ts:11:50\n\n    Error Context: test-results/checkout-zip-ZIP-override-affects-tax-and-total/error-context.md\n\n  1 failed\n    tests/checkout-zip.spec.ts:2:5 › ZIP override affects tax and total ────────────────────────────\n  1 passed (9.0s)", "stdout_lines": ["", "Running 2 tests using 2 workers", "", "  ✓  1 tests/checkout.spec.ts:3:5 › checkout computes tax and writes ledger (894ms)", "  ✘  2 tests/checkout-zip.spec.ts:2:5 › ZIP override affects tax and total (5.9s)", "", "", "  1) tests/checkout-zip.spec.ts:2:5 › ZIP override affects tax and total ───────────────────────────", "", "    Error: \u001b[31mTimed out 5000ms waiting for \u001b[39m\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m", "", "    Locator: getByText('Total: $109.25')", "    Expected: visible", "    Received: <element(s) not found>", "    Call log:", "    \u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m", "    \u001b[2m  - waiting for getByText('Total: $109.25')\u001b[22m", "", "", "       9 |   await expect(page.getByText('Subtotal: $100.00')).toBeVisible();", "      10 |   await expect(page.getByText('Tax (9.25%): $9.25')).toBeVisible();", "    > 11 |   await expect(page.getByText('Total: $109.25')).toBeVisible();", "         |                                                  ^", "      12 | });", "      13 |", "        at /Users/akhil/erp-platform/apps/generated/demo-salon/tests/checkout-zip.spec.ts:11:50", "", "    Error Context: test-results/checkout-zip-ZIP-override-affects-tax-and-total/error-context.md", "", "  1 failed", "    tests/checkout-zip.spec.ts:2:5 › ZIP override affects tax and total ────────────────────────────", "  1 passed (9.0s)"]}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=17   changed=6    unreachable=0    failed=1    skipped=1    rescued=0    ignored=0   
+

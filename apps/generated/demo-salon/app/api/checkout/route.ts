@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { calcCaTax } from '@/lib/tax';
+import { calcTax } from '@/lib/tax-adapter';
 
 const db = new PrismaClient();
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const items = Array.isArray(body?.items) ? body.items : [];
     const subtotal = round2(items.reduce((s, it) => s + Number(it.amount || 0), 0));
     const tip = round2(Number(body?.tip || 0));
-    const { rate, tax } = calcCaTax({ subtotal, zip: body?.zip });
+    const { rate, tax } = calcTax({ subtotal, zip: body?.zip });
 
     const total = round2(subtotal + tax + tip);
 

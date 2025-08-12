@@ -1,0 +1,17 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+const db = new PrismaClient();
+
+const model = db.service;
+
+export async function GET(req: NextRequest) {
+  const list = await model.findMany();
+  return NextResponse.json(list);
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const created = await model.create({ data: body });
+  return NextResponse.json(created, { status: 201 });
+}
+
