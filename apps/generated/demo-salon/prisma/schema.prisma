@@ -1,0 +1,56 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Customer {
+  id    String  @id @unique @default(cuid())
+  name  String
+  email String? @unique
+  phone String?
+}
+
+model Staff {
+  id   String @id @unique @default(cuid())
+  name String
+  role String
+}
+
+model Service {
+  id          String  @id @unique @default(cuid())
+  name        String
+  durationMin Int
+  price       Decimal
+}
+
+model Appointment {
+  id         String   @id @unique @default(cuid())
+  customerId String
+  staffId    String
+  serviceId  String
+  start      DateTime
+  status     String
+
+  @@index([customerId])
+  @@index([staffId])
+  @@index([start])
+}
+
+model Ledger {
+  id         String   @id @default(cuid())
+  kind       String   // sale | tax | tip | fee | refund
+  amount     Decimal
+  currency   String   @default("USD")
+  refType    String?  // e.g., "Appointment"
+  refId      String?  // e.g., appointment id
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([refType, refId])
+  @@index([createdAt])
+}
+
