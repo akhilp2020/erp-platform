@@ -43,13 +43,25 @@ async function generate(ptl, outDir) {
       required: f.required === true,
       unique: !!f.unique,
       isId: f.name.toLowerCase() === 'id'
-    }));
+    }
+  ));
+  if (!fields.some(f => f.name === 'tenantId')) {
+  fields.push({ name: 'tenantId', type: 'String', required: true, unique: false, isId: false });
+}
     const indexes = (e.fields || []).filter(f => f.index).map(f => f.name);
     return { name: e.name, fields, indexes };
   });
 
   const prismaOut = compile(path.resolve(__dirname, '../templates/prisma/schema.prisma.hbs'), { entities });
   await fs.outputFile(path.join(outDir, 'prisma/schema.prisma'), prismaOut);
+
+  // Ensure lib/ exists and write db-tenant.ts from template
+  const dbTenantOut = compile(path.resolve(__dirname, '../templates/lib/db-tenant.ts.hbs'), {});
+  await fs.outputFile(path.join(outDir, 'lib', 'db-tenant.ts'), dbTenantOut);
+
+  // Write a unit test for the tenant guard (once)
+  const tenantTestOut = compile(path.resolve(__dirname, '../templates/tests/tenant-guard.unit.test.ts.hbs'), {});
+  await fs.outputFile(path.join(outDir, 'lib', 'tenant-guard.unit.test.ts'), tenantTestOut);
 
   // 2) For each entity: API + UI (Next.js app router)
   for (const e of entities) {
