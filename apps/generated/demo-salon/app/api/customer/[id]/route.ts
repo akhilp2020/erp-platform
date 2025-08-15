@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-const db = new PrismaClient();
+import { dbForTenant } from '@/lib/db-tenant';
 
 const model = db.customer;
 
 export async function GET(_: NextRequest, { params }: { params: { id: string }}) {
+// BEGIN ANSIBLE TENANT DB GET ID
+const tenantId = req.headers.get('x-tenant-id') || 'demo';
+const db = dbForTenant(tenantId);
+// END ANSIBLE TENANT DB GET ID
   const row = await model.findUnique({ where: { id: params.id } });
   if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   return NextResponse.json(row);

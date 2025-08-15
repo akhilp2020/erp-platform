@@ -1,0 +1,102 @@
+
+PLAY [Week 7 – Tenant guard (SQLite dev) + tests + git] ************************
+
+TASK [Ensure app folder exists] ************************************************
+ok: [localhost]
+
+TASK [Stop if app not found] ***************************************************
+skipping: [localhost]
+
+TASK [Write lib/db-tenant.ts (idempotent, hardened)] ***************************
+ok: [localhost]
+
+TASK [Ensure Tenant model exists (append if missing)] **************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [Stat checkout route] *****************************************************
+ok: [localhost]
+
+TASK [Checkout API uses dbForTenant import] ************************************
+ok: [localhost]
+
+TASK [Remove module-level PrismaClient in checkout] ****************************
+ok: [localhost]
+
+TASK [Inject tenant-scoped db in POST handler (checkout)] **********************
+ok: [localhost]
+
+TASK [Customer list route import] **********************************************
+ok: [localhost]
+
+TASK [Remove module-level PrismaClient in customer list] ***********************
+ok: [localhost]
+
+TASK [Inject tenant-scoped db in GET (customer list)] **************************
+ok: [localhost]
+
+TASK [Inject tenant-scoped db in POST (customer create)] ***********************
+ok: [localhost]
+
+TASK [Customer by id route import] *********************************************
+ok: [localhost]
+
+TASK [Remove module-level PrismaClient in customer by id] **********************
+ok: [localhost]
+
+TASK [Inject tenant-scoped db in GET (customer by id)] *************************
+ok: [localhost]
+
+TASK [Ensure .env has DATABASE_URL (SQLite dev)] *******************************
+changed: [localhost]
+
+TASK [Prisma generate] *********************************************************
+changed: [localhost]
+
+TASK [Prisma migrate dev (add tenant fields)] **********************************
+changed: [localhost]
+
+TASK [Unit test for tenant guard (Jest)] ***************************************
+changed: [localhost]
+
+TASK [Ensure playwright config uses ./tests] ***********************************
+ok: [localhost]
+
+TASK [E2E – customer isolation via API] ****************************************
+changed: [localhost]
+
+TASK [Run unit tests (Jest)] ***************************************************
+fatal: [localhost]: FAILED! => {"changed": true, "cmd": "npm run -s test", "delta": "0:00:01.162361", "end": "2025-08-12 17:23:41.107609", "msg": "non-zero return code", "rc": 1, "start": "2025-08-12 17:23:39.945248", "stderr": "FAIL lib/tenant-guard.unit.test.ts\n  ● dbForTenant scopes reads/writes per tenant\n\n    TypeError: prisma.$use is not a function\n\n      4 |   const prisma = new PrismaClient();\n      5 |\n    > 6 |   prisma.$use(async (params: Prisma.MiddlewareParams, next: Prisma.MiddlewareNext) => {\n        |          ^\n      7 |     // Some actions arrive without args\n      8 |     // @ts-ignore\n      9 |     if (params.args == null) params.args = {};\n\n      at dbForTenant (lib/db-tenant.ts:6:10)\n      at lib/tenant-guard.unit.test.ts:4:25\n      at lib/tenant-guard.unit.test.ts:8:71\n      at __awaiter (lib/tenant-guard.unit.test.ts:4:12)\n      at Object.<anonymous> (lib/tenant-guard.unit.test.ts:3:63)\n\nPASS lib/tax-adapter.unit.test.ts\nPASS lib/tax.unit.test.ts\n\nTest Suites: 1 failed, 2 passed, 3 total\nTests:       1 failed, 3 passed, 4 total\nSnapshots:   0 total\nTime:        0.465 s, estimated 1 s\nRan all test suites.", "stderr_lines": ["FAIL lib/tenant-guard.unit.test.ts", "  ● dbForTenant scopes reads/writes per tenant", "", "    TypeError: prisma.$use is not a function", "", "      4 |   const prisma = new PrismaClient();", "      5 |", "    > 6 |   prisma.$use(async (params: Prisma.MiddlewareParams, next: Prisma.MiddlewareNext) => {", "        |          ^", "      7 |     // Some actions arrive without args", "      8 |     // @ts-ignore", "      9 |     if (params.args == null) params.args = {};", "", "      at dbForTenant (lib/db-tenant.ts:6:10)", "      at lib/tenant-guard.unit.test.ts:4:25", "      at lib/tenant-guard.unit.test.ts:8:71", "      at __awaiter (lib/tenant-guard.unit.test.ts:4:12)", "      at Object.<anonymous> (lib/tenant-guard.unit.test.ts:3:63)", "", "PASS lib/tax-adapter.unit.test.ts", "PASS lib/tax.unit.test.ts", "", "Test Suites: 1 failed, 2 passed, 3 total", "Tests:       1 failed, 3 passed, 4 total", "Snapshots:   0 total", "Time:        0.465 s, estimated 1 s", "Ran all test suites."], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=30   changed=5    unreachable=0    failed=1    skipped=1    rescued=0    ignored=0   
+

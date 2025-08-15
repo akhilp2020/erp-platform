@@ -2,17 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbForTenant } from '@/lib/db-tenant';
 
 export async function GET(req: NextRequest) {
-  const tenantId = req.headers.get('x-tenant-id') ?? 'demo';
+  const tenantId = req.headers.get('x-tenant-id') || 'demo';
   const db = dbForTenant(tenantId);
-
-  const list = await db.customer.findMany();
-  return NextResponse.json(list);
+  const rows = await db.customer.findMany({ orderBy: { id: 'desc' } });
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
-  const tenantId = req.headers.get('x-tenant-id') ?? 'demo';
+  const tenantId = req.headers.get('x-tenant-id') || 'demo';
   const db = dbForTenant(tenantId);
-
   const body = await req.json();
   const created = await db.customer.create({ data: body });
   return NextResponse.json(created, { status: 201 });

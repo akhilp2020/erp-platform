@@ -8,6 +8,8 @@ generator client {
 }
 
 model Customer {
+  @@index([tenantId])
+  tenantId String @default("demo")
   id    String  @id @unique @default(cuid())
   name  String
   email String? @unique
@@ -54,3 +56,9 @@ model Ledger {
   @@index([createdAt])
 }
 
+// BEGIN ANSIBLE TENANT MODEL
+model Tenant {
+  id   String @id @default(cuid())
+  name String @unique
+}
+// END ANSIBLE TENANT MODEL

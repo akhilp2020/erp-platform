@@ -1,0 +1,87 @@
+
+PLAY [Week 7 – Tenant guard (SQLite dev) + tests + git] ************************
+
+TASK [Ensure app folder exists] ************************************************
+ok: [localhost]
+
+TASK [Stop if app not found] ***************************************************
+skipping: [localhost]
+
+TASK [Write lib/db-tenant.ts (idempotent, hardened)] ***************************
+changed: [localhost]
+
+TASK [Ensure Tenant model exists (append if missing)] **************************
+changed: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+changed: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+changed: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [ansible.builtin.lineinfile] **********************************************
+ok: [localhost]
+
+TASK [Stat checkout route] *****************************************************
+ok: [localhost]
+
+TASK [Checkout API uses dbForTenant import] ************************************
+changed: [localhost]
+
+TASK [Remove module-level PrismaClient in checkout] ****************************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in POST handler (checkout)] **********************
+changed: [localhost]
+
+TASK [Customer list route import] **********************************************
+changed: [localhost]
+
+TASK [Remove module-level PrismaClient in customer list] ***********************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in GET (customer list)] **************************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in POST (customer create)] ***********************
+changed: [localhost]
+
+TASK [Customer by id route import] *********************************************
+changed: [localhost]
+
+TASK [Remove module-level PrismaClient in customer by id] **********************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in GET (customer by id)] *************************
+changed: [localhost]
+
+TASK [Prisma generate] *********************************************************
+changed: [localhost]
+
+TASK [Prisma migrate dev (add tenant fields)] **********************************
+fatal: [localhost]: FAILED! => {"changed": true, "cmd": "npx prisma migrate dev -n \"week7-tenant-guard\"", "delta": "0:00:00.785026", "end": "2025-08-12 17:17:48.733641", "msg": "non-zero return code", "rc": 1, "start": "2025-08-12 17:17:47.948615", "stderr": "Error: Prisma schema validation - (get-config wasm)\nError code: P1012\nerror: Environment variable not found: DATABASE_URL.\n  -->  prisma/schema.prisma:3\n   | \n 2 |   provider = \"sqlite\"\n 3 |   url      = env(\"DATABASE_URL\")\n   | \n\nValidation Error Count: 1\n[Context: getConfig]\n\nPrisma CLI Version : 6.14.0", "stderr_lines": ["Error: Prisma schema validation - (get-config wasm)", "Error code: P1012", "error: Environment variable not found: DATABASE_URL.", "  -->  prisma/schema.prisma:3", "   | ", " 2 |   provider = \"sqlite\"", " 3 |   url      = env(\"DATABASE_URL\")", "   | ", "", "Validation Error Count: 1", "[Context: getConfig]", "", "Prisma CLI Version : 6.14.0"], "stdout": "Prisma schema loaded from prisma/schema.prisma", "stdout_lines": ["Prisma schema loaded from prisma/schema.prisma"]}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=25   changed=15   unreachable=0    failed=1    skipped=1    rescued=0    ignored=0   
+

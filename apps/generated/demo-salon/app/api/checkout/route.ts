@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { dbForTenant } from '@/lib/db-tenant';
 import { calcTax } from '@/lib/tax-adapter';
-
-const db = new PrismaClient();
 
 // Request body shape:
 // {
@@ -13,6 +11,10 @@ const db = new PrismaClient();
 //   "zip": "94086"                // optional
 // }
 export async function POST(req: NextRequest) {
+// BEGIN ANSIBLE TENANT DB
+const tenantId = req.headers.get('x-tenant-id') || 'demo';
+const db = dbForTenant(tenantId);
+// END ANSIBLE TENANT DB
   try {
     const body = await req.json();
 

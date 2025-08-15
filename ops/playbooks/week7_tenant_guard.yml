@@ -1,0 +1,472 @@
+---
+- name: Week 7 – Tenant guard (SQLite dev) + tests + git
+  hosts: local
+  gather_facts: false
+  vars:
+    app_dir: "{{ lookup('env','HOME') }}/erp-platform/apps/generated/demo-salon"
+    schema: "{{ app_dir }}/prisma/schema.prisma"
+
+  tasks:
+    - name: Ensure app folder exists
+      ansible.builtin.stat:
+        path: "{{ app_dir }}"
+      register: app_stat
+
+    - name: Stop if app not found
+      ansible.builtin.fail:
+        msg: "App folder not found at {{ app_dir }}. Adjust app_dir."
+      when: not app_stat.stat.exists
+
+    # ---------- Hardened tenant-aware Prisma client ----------
+    - name: Write lib/db-tenant.ts (idempotent, hardened + proxy fallback)
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/lib/db-tenant.ts"
+        mode: "0644"
+        content: |
+          import { Prisma, PrismaClient } from '@prisma/client';
+
+          /**
+           * Returns a Prisma client that is tenant-scoped.
+           * Primary path: Prisma middleware via $use.
+           * Fallback path: Proxy wrapper for tests/runtimes where $use isn't available.
+           */
+          export function dbForTenant(tenantId: string) {
+            const prisma = new PrismaClient() as any;
+
+            // --- Primary: middleware ---
+            if (typeof prisma.$use === 'function') {
+              prisma.$use(async (params: Prisma.MiddlewareParams, next: Prisma.MiddlewareNext) => {
+                if (!params.args) params.args = {};
+
+                const SCOPE = new Set([
+                  'findFirst', 'findMany', 'updateMany', 'deleteMany', 'count', 'aggregate', 'groupBy',
+                ]);
+
+                // Writes
+                if (params.action === 'create') {
+                  params.args.data = { ...(params.args?.data ?? {}), tenantId };
+                }
+                if (params.action === 'createMany') {
+                  const arr = (params.args as any)?.data ?? [];
+                  (params.args as any).data = arr.map((d: any) => ({ ...d, tenantId }));
+                }
+
+                // Update/Delete by unique
+                if (params.action === 'update' || params.action === 'delete') {
+                  const existing = (params.args as any).where ?? {};
+                  (params.args as any).where = { AND: [{ tenantId }, existing] };
+                }
+
+                // Reads/Aggregations
+                if (SCOPE.has(params.action as any)) {
+                  const existing = (params.args as any).where ?? {};
+                  (params.args as any).where = { AND: [{ tenantId }, existing] };
+                }
+
+                return next(params);
+              });
+
+              return prisma as PrismaClient;
+            }
+
+            // --- Fallback: proxy (for environments where $use is unavailable) ---
+            const TENANT_MODELS = new Set([
+              'customer','staff','service','appointment','ledger'
+            ]);
+
+            function wrapModel(model: any) {
+              return new Proxy(model, {
+                get(target, prop, receiver) {
+                  const fn = (target as any)[prop];
+                  if (typeof fn !== 'function') return Reflect.get(target, prop, receiver);
+
+                  return async (args: any = {}) => {
+                    const clone = { ...(args ?? {}) };
+
+                    // writes
+                    if (prop === 'create') {
+                      clone.data = { ...(clone.data ?? {}), tenantId };
+                    } else if (prop === 'createMany') {
+                      const arr = clone.data ?? [];
+                      clone.data = arr.map((d: any) => ({ ...d, tenantId }));
+                    }
+
+                    // reads/aggregations/unique ops
+                    const SCOPE_READ = new Set(['findFirst','findMany','count','aggregate','groupBy']);
+                    const SCOPE_UNIQUE = new Set(['update','delete']);
+
+                    if (SCOPE_READ.has(String(prop))) {
+                      clone.where = { AND: [{ tenantId }, clone.where ?? {}] };
+                    } else if (SCOPE_UNIQUE.has(String(prop))) {
+                      clone.where = { AND: [{ tenantId }, clone.where ?? {}] };
+                    }
+
+                    return (target as any)[prop](clone);
+                  };
+                }
+              });
+            }
+
+            return new Proxy(prisma, {
+              get(target, prop, receiver) {
+                if (TENANT_MODELS.has(String(prop))) {
+                  return wrapModel((target as any)[prop]);
+                }
+                return Reflect.get(target, prop, receiver);
+              }
+            }) as PrismaClient;
+          }
+
+    # -- Ensure routes import dbForTenant ----------------------------------------
+    - name: Ensure routes import dbForTenant
+      ansible.builtin.lineinfile:
+        path: "{{ item }}"
+        insertafter: '^import .*'
+        line: "import { dbForTenant } from '@/lib/db-tenant';"
+        state: present
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+      ignore_errors: false
+
+    # -- Remove any top-level 'const model = db.xxx;' (db not defined yet) -------
+    - name: Remove stale top-level model lines
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: '^\\s*const\\s+model\\s*=\\s*db\\.[a-zA-Z_]+\\s*;\\s*$'
+        replace: '// model defined per-request (tenant-aware)'
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+
+    # ---------- Safe injection via markers (avoids regex paren issues) ----------
+    # 1) Add marker above each GET
+    - name: Insert marker above GET handlers
+      ansible.builtin.lineinfile:
+        path: "{{ item }}"
+        insertbefore: '^export\\s+async\\s+function\\s+GET'
+        line: "// TENANT-BLOCK-GET"
+        state: present
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+
+    # 2) Inject tenant block after GET marker
+    - name: Inject tenant block after GET markers
+      ansible.builtin.blockinfile:
+        path: "{{ item.path }}"
+        marker: "// BEGIN TENANT GET {{ item.entity }} // {mark}"
+        insertafter: '^// TENANT-BLOCK-GET$'
+        block: |
+          const tenantId = req.headers.get('x-tenant-id') ?? 'tenantA';
+          const db = dbForTenant(tenantId);
+          const model = db.{{ item.entity }};
+      loop:
+        - { path: "{{ app_dir }}/app/api/customer/route.ts",    entity: "customer" }
+        - { path: "{{ app_dir }}/app/api/staff/route.ts",       entity: "staff" }
+        - { path: "{{ app_dir }}/app/api/service/route.ts",     entity: "service" }
+        - { path: "{{ app_dir }}/app/api/appointment/route.ts", entity: "appointment" }
+
+    # 3) Add marker above each POST
+    - name: Insert marker above POST handlers
+      ansible.builtin.lineinfile:
+        path: "{{ item }}"
+        insertbefore: '^export\\s+async\\s+function\\s+POST'
+        line: "// TENANT-BLOCK-POST"
+        state: present
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+
+    # 4) Inject tenant block after POST marker
+    - name: Inject tenant block after POST markers
+      ansible.builtin.blockinfile:
+        path: "{{ item.path }}"
+        marker: "// BEGIN TENANT POST {{ item.entity }} // {mark}"
+        insertafter: '^// TENANT-BLOCK-POST$'
+        block: |
+          const tenantId = req.headers.get('x-tenant-id') ?? 'tenantA';
+          const db = dbForTenant(tenantId);
+          const model = db.{{ item.entity }};
+      loop:
+        - { path: "{{ app_dir }}/app/api/customer/route.ts",    entity: "customer" }
+        - { path: "{{ app_dir }}/app/api/staff/route.ts",       entity: "staff" }
+        - { path: "{{ app_dir }}/app/api/service/route.ts",     entity: "service" }
+        - { path: "{{ app_dir }}/app/api/appointment/route.ts", entity: "appointment" }
+
+    # ---------- Prisma schema tweaks: tenantId on models ----------
+    - name: Ensure Tenant model exists (append if missing)
+      ansible.builtin.blockinfile:
+        path: "{{ schema }}"
+        marker: "// {mark} ANSIBLE TENANT MODEL"
+        insertafter: EOF
+        block: |
+          model Tenant {
+            id   String @id @default(cuid())
+            name String @unique
+          }
+
+    - name: Add tenantId + index to Customer
+      block:
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Customer \\{"
+            line: "  tenantId String @default(\"demo\")"
+            state: present
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Customer \\{"
+            line: "  @@index([tenantId])"
+            state: present
+
+    - name: Add tenantId + index to Staff
+      block:
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Staff \\{"
+            line: "  tenantId String @default(\"demo\")"
+            state: present
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Staff \\{"
+            line: "  @@index([tenantId])"
+            state: present
+
+    - name: Add tenantId + index to Service
+      block:
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Service \\{"
+            line: "  tenantId String @default(\"demo\")"
+            state: present
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Service \\{"
+            line: "  @@index([tenantId])"
+            state: present
+
+    - name: Add tenantId + index to Appointment
+      block:
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Appointment \\{"
+            line: "  tenantId String @default(\"demo\")"
+            state: present
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Appointment \\{"
+            line: "  @@index([tenantId])"
+            state: present
+
+    - name: Add tenantId + index to Ledger (if model exists)
+      block:
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Ledger \\{"
+            line: "  tenantId String @default(\"demo\")"
+            state: present
+          register: ledger_add
+          failed_when: false
+        - ansible.builtin.lineinfile:
+            path: "{{ schema }}"
+            insertafter: "^model Ledger \\{"
+            line: "  @@index([tenantId])"
+            state: present
+          when: ledger_add is not failed
+
+    - name: Stat checkout route
+      ansible.builtin.stat:
+        path: "{{ app_dir }}/app/api/checkout/route.ts"
+      register: checkout_stat
+
+    # ---------- Patch API routes to use dbForTenant (checkout only, if exists) ----------
+    - name: Checkout API uses dbForTenant import
+      ansible.builtin.replace:
+        path: "{{ app_dir }}/app/api/checkout/route.ts"
+        regexp: "import\\s+\\{\\s*PrismaClient\\s*\\}\\s+from\\s+['\\\"]@prisma/client['\\\"];"
+        replace: "import { dbForTenant } from '@/lib/db-tenant';"
+      when: checkout_stat.stat.exists
+      failed_when: false
+
+    - name: Remove module-level PrismaClient in checkout
+      ansible.builtin.replace:
+        path: "{{ app_dir }}/app/api/checkout/route.ts"
+        regexp: "^\\s*const\\s+db\\s*=\\s*new\\s+PrismaClient\\(\\);\\s*$"
+        replace: ""
+      when: checkout_stat.stat.exists
+      failed_when: false
+
+    - name: Inject tenant-scoped db in POST handler (checkout)
+      ansible.builtin.blockinfile:
+        path: "{{ app_dir }}/app/api/checkout/route.ts"
+        marker: "// {mark} ANSIBLE TENANT DB"
+        insertafter: "^export\\s+async\\s+function\\s+POST\\("
+        block: |
+          const tenantId = req.headers.get('x-tenant-id') || 'demo';
+          const db = dbForTenant(tenantId);
+      when: checkout_stat.stat.exists
+
+    # ---------- .env for Prisma ----------
+    - name: Ensure .env has DATABASE_URL (SQLite dev)
+      ansible.builtin.lineinfile:
+        path: "{{ app_dir }}/.env"
+        regexp: '^DATABASE_URL='
+        line: 'DATABASE_URL="file:./prisma/dev.db"'
+        create: yes
+        mode: "0644"
+
+    # ---------- Prisma generate + migrate ----------
+    - name: Prisma generate
+      ansible.builtin.shell: npx prisma generate
+      args: { chdir: "{{ app_dir }}" }
+      environment:
+        DATABASE_URL: "file:./prisma/dev.db"
+
+    - name: Prisma migrate dev (add tenant fields)
+      ansible.builtin.shell: npx prisma migrate dev -n "week7-tenant-guard"
+      args: { chdir: "{{ app_dir }}" }
+      environment:
+        DATABASE_URL: "file:./prisma/dev.db"
+
+    # ---------- Tests ----------
+    - name: Unit test for tenant guard (Jest)
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/lib/tenant-guard.unit.test.ts"
+        mode: "0644"
+        content: |
+          import { dbForTenant } from './db-tenant';
+
+          test('dbForTenant scopes reads/writes per tenant', async () => {
+            const t1 = dbForTenant('t1');
+            const t2 = dbForTenant('t2');
+            try {
+              await t1.customer.create({ data: { name: 'Alice' } });
+              await t2.customer.create({ data: { name: 'Bob' } });
+
+              const a1 = await t1.customer.count();
+              const a2 = await t2.customer.count();
+              expect(a1).toBeGreaterThan(0);
+              expect(a2).toBeGreaterThan(0);
+
+              const list1 = await t1.customer.findMany({ where: { name: 'Bob' } });
+              const list2 = await t2.customer.findMany({ where: { name: 'Alice' } });
+              expect(list1.length).toBe(0);
+              expect(list2.length).toBe(0);
+            } finally {
+              await (t1 as any).$disconnect?.();
+              await (t2 as any).$disconnect?.();
+            }
+          });
+
+    - name: Ensure playwright config uses ./tests
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/playwright.config.ts"
+        mode: "0644"
+        content: |
+          import { defineConfig } from '@playwright/test';
+          export default defineConfig({
+            testDir: './tests',
+            use: { baseURL: 'http://localhost:3000' },
+            webServer: {
+              command: 'npm run dev',
+              url: 'http://localhost:3000',
+              reuseExistingServer: true,
+              timeout: 90_000,
+              env: { TAX_PROVIDER: 'table' }
+            }
+          });
+
+    - name: E2E – customer isolation via API
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/tests/tenant-isolation.spec.ts"
+        mode: "0644"
+        content: |
+          import { test, expect } from '@playwright/test';
+          test('customers are isolated by x-tenant-id', async ({ request }) => {
+            const createA = await request.post('/api/customer', {
+              headers: { 'x-tenant-id': 'tenantA' },
+              data: { name: 'Alice A' }
+            });
+            expect(createA.ok()).toBeTruthy();
+            const createB = await request.post('/api/customer', {
+              headers: { 'x-tenant-id': 'tenantB' },
+              data: { name: 'Bob B' }
+            });
+            expect(createB.ok()).toBeTruthy();
+
+            const listA = await request.get('/api/customer', { headers: { 'x-tenant-id': 'tenantA' }});
+            const arrA = await listA.json();
+            expect(arrA.some((r: any) => r.name === 'Alice A')).toBe(true);
+            expect(arrA.some((r: any) => r.name === 'Bob B')).toBe(false);
+
+            const listB = await request.get('/api/customer', { headers: { 'x-tenant-id': 'tenantB' }});
+            const arrB = await listB.json();
+            expect(arrB.some((r: any) => r.name === 'Bob B')).toBe(true);
+            expect(arrB.some((r: any) => r.name === 'Alice A')).toBe(false);
+          });
+
+    # ----- Clean up legacy injected blocks to avoid duplicates -----
+    - name: Remove legacy ANSIBLE tenant blocks (GET)
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: "// BEGIN ANSIBLE TENANT DB GET[\\s\\S]*?// END ANSIBLE TENANT DB GET\\n?"
+        replace: ""
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+
+    - name: Remove legacy ANSIBLE tenant blocks (POST)
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: "// BEGIN ANSIBLE TENANT DB POST[\\s\\S]*?// END ANSIBLE TENANT DB POST\\n?"
+        replace: ""
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+
+    - name: Remove any top-level 'const model = db.x;' left behind
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: "^\\s*const\\s+model\\s*=\\s*db\\.[a-zA-Z_]+\\s*;\\s*$"
+        replace: ""
+      loop:
+        - "{{ app_dir }}/app/api/customer/route.ts"
+        - "{{ app_dir }}/app/api/staff/route.ts"
+        - "{{ app_dir }}/app/api/service/route.ts"
+        - "{{ app_dir }}/app/api/appointment/route.ts"
+
+    - name: Run unit tests (Jest)
+      ansible.builtin.shell: npm run -s test
+      args: { chdir: "{{ app_dir }}" }
+
+    - name: Run e2e (Playwright)
+      ansible.builtin.shell: npm run -s e2e
+      args: { chdir: "{{ app_dir }}" }
+
+    # ---------- Git commit at repo root ----------
+    - name: Git add
+      ansible.builtin.shell: git add .
+      args: { chdir: "{{ app_dir }}/../.." }
+
+    - name: Git commit
+      ansible.builtin.shell: |
+        git commit -m "feat(week7): hardened tenant middleware + safe marker injection + tests + migrate"
+      args: { chdir: "{{ app_dir }}/../.." }
+      register: git_commit
+      failed_when: git_commit.rc != 0 and ('nothing to commit' not in git_commit.stderr)
+
+    - name: Git status
+      ansible.builtin.shell: git status --porcelain
+      args: { chdir: "{{ app_dir }}/../.." }

@@ -1,0 +1,96 @@
+
+PLAY [Week 7 – Tenant guard (SQLite dev) + tests + git] ************************
+
+TASK [Ensure app folder exists] ************************************************
+ok: [localhost]
+
+TASK [Stop if app not found] ***************************************************
+skipping: [localhost]
+
+TASK [Write lib/db-tenant.ts (Prisma middleware scoping by tenant)] ************
+changed: [localhost]
+
+TASK [Ensure Tenant model exists (append if missing)] **************************
+changed: [localhost]
+
+TASK [Add tenantId to Customer (idempotent)] ***********************************
+changed: [localhost]
+
+TASK [Index Customer.tenantId (idempotent)] ************************************
+changed: [localhost]
+
+TASK [Add tenantId to Staff] ***************************************************
+ok: [localhost]
+
+TASK [Index Staff.tenantId] ****************************************************
+ok: [localhost]
+
+TASK [Add tenantId to Service] *************************************************
+ok: [localhost]
+
+TASK [Index Service.tenantId] **************************************************
+ok: [localhost]
+
+TASK [Add tenantId to Appointment] *********************************************
+ok: [localhost]
+
+TASK [Index Appointment.tenantId] **********************************************
+ok: [localhost]
+
+TASK [Add tenantId to Ledger (if exists in schema)] ****************************
+ok: [localhost]
+
+TASK [Index Ledger.tenantId (if model exists)] *********************************
+ok: [localhost]
+
+TASK [Use dbForTenant in checkout route (import)] ******************************
+changed: [localhost]
+
+TASK [Remove module-level PrismaClient in checkout route] **********************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in POST handler (checkout)] **********************
+changed: [localhost]
+
+TASK [Use dbForTenant in customer list route (import)] *************************
+changed: [localhost]
+
+TASK [Remove module-level PrismaClient in customer list route] *****************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in GET handler (customer list)] ******************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in POST handler (customer create)] ***************
+changed: [localhost]
+
+TASK [Use dbForTenant in customer id route (import)] ***************************
+changed: [localhost]
+
+TASK [Remove module-level PrismaClient in customer id route] *******************
+changed: [localhost]
+
+TASK [Inject tenant-scoped db in GET handler (customer by id)] *****************
+changed: [localhost]
+
+TASK [Prisma generate] *********************************************************
+changed: [localhost]
+
+TASK [Prisma migrate dev (add tenant fields)] **********************************
+changed: [localhost]
+
+TASK [Jest unit test for tenant guard] *****************************************
+changed: [localhost]
+
+TASK [Playwright E2E – customer isolation via API] *****************************
+changed: [localhost]
+
+TASK [Ensure playwright config uses ./tests and boots dev server] **************
+ok: [localhost]
+
+TASK [Run unit tests (Jest)] ***************************************************
+fatal: [localhost]: FAILED! => {"changed": true, "cmd": "npm run -s test", "delta": "0:00:00.857452", "end": "2025-08-12 15:36:52.164350", "msg": "non-zero return code", "rc": 1, "start": "2025-08-12 15:36:51.306898", "stderr": "FAIL lib/tenant-guard.unit.test.ts\n  ● dbForTenant scopes reads/writes per tenant\n\n    TypeError: Cannot read properties of undefined (reading 'where')\n\n      27 |     // Scope reads/aggregations\n      28 |     if (scopeActions.has(params.action as any)) {\n    > 29 |       params.args.where = { AND: [{ tenantId }, params.args.where ?? {}] };\n         |                                                             ^\n      30 |     }\n      31 |\n      32 |     return next(params);\n\n      at lib/db-tenant.ts:29:61\n      at lib/db-tenant.ts:8:71\n      at __awaiter (lib/db-tenant.ts:4:12)\n      at lib/db-tenant.ts:7:86\n      at nextMiddleware (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:840:20)\n      at Object.callback [as runInChildSpan] (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:24:12)\n      at Io.runInChildSpan (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:49:42)\n      at l (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:838:38)\n      at consumer (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:880:49)\n      at node_modules/@prisma/client/src/runtime/getPrismaClient.ts:880:27\n      at Object.callback [as runInChildSpan] (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:24:12)\n      at Io.runInChildSpan (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:49:42)\n      at r._request (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:876:34)\n      at e._createPrismaPromise.action (node_modules/@prisma/client/src/runtime/core/model/applyModel.ts:103:27)\n      at callback (node_modules/@prisma/client/src/runtime/core/request/createPrismaPromise.ts:34:46)\n      at PrismaPromise._callback [as then] (node_modules/@prisma/client/src/runtime/core/request/createPrismaPromise.ts:52:16)\n\nPASS lib/tax-adapter.unit.test.ts\nPASS lib/tax.unit.test.ts\n\nTest Suites: 1 failed, 2 passed, 3 total\nTests:       1 failed, 3 passed, 4 total\nSnapshots:   0 total\nTime:        0.492 s, estimated 1 s\nRan all test suites.", "stderr_lines": ["FAIL lib/tenant-guard.unit.test.ts", "  ● dbForTenant scopes reads/writes per tenant", "", "    TypeError: Cannot read properties of undefined (reading 'where')", "", "      27 |     // Scope reads/aggregations", "      28 |     if (scopeActions.has(params.action as any)) {", "    > 29 |       params.args.where = { AND: [{ tenantId }, params.args.where ?? {}] };", "         |                                                             ^", "      30 |     }", "      31 |", "      32 |     return next(params);", "", "      at lib/db-tenant.ts:29:61", "      at lib/db-tenant.ts:8:71", "      at __awaiter (lib/db-tenant.ts:4:12)", "      at lib/db-tenant.ts:7:86", "      at nextMiddleware (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:840:20)", "      at Object.callback [as runInChildSpan] (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:24:12)", "      at Io.runInChildSpan (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:49:42)", "      at l (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:838:38)", "      at consumer (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:880:49)", "      at node_modules/@prisma/client/src/runtime/getPrismaClient.ts:880:27", "      at Object.callback [as runInChildSpan] (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:24:12)", "      at Io.runInChildSpan (node_modules/@prisma/client/src/runtime/core/tracing/TracingHelper.ts:49:42)", "      at r._request (node_modules/@prisma/client/src/runtime/getPrismaClient.ts:876:34)", "      at e._createPrismaPromise.action (node_modules/@prisma/client/src/runtime/core/model/applyModel.ts:103:27)", "      at callback (node_modules/@prisma/client/src/runtime/core/request/createPrismaPromise.ts:34:46)", "      at PrismaPromise._callback [as then] (node_modules/@prisma/client/src/runtime/core/request/createPrismaPromise.ts:52:16)", "", "PASS lib/tax-adapter.unit.test.ts", "PASS lib/tax.unit.test.ts", "", "Test Suites: 1 failed, 2 passed, 3 total", "Tests:       1 failed, 3 passed, 4 total", "Snapshots:   0 total", "Time:        0.492 s, estimated 1 s", "Ran all test suites."], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=28   changed=18   unreachable=0    failed=1    skipped=1    rescued=0    ignored=0   
+

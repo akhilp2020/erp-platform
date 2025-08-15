@@ -1,0 +1,25 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { dbForTenant } from '@/lib/db-tenant';
+
+export async function GET(req: NextRequest, { params }: { params: { id: string }}) {
+  const tenantId = req.headers.get('x-tenant-id') || 'demo';
+  const db = dbForTenant(tenantId);
+  const row = await db.staff.findFirst({ where: { id: params.id } });
+  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json(row);
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string }}) {
+  const tenantId = req.headers.get('x-tenant-id') || 'demo';
+  const db = dbForTenant(tenantId);
+  const body = await req.json();
+  const updated = await db.staff.update({ where: { id: params.id }, data: body });
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string }}) {
+  const tenantId = req.headers.get('x-tenant-id') || 'demo';
+  const db = dbForTenant(tenantId);
+  await db.staff.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}
